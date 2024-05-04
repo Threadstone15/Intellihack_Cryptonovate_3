@@ -1,11 +1,10 @@
 from dotenv import load_dotenv
-load_dotenv()  # Optional, for Streamlit app configuration
-
+load_dotenv()
 import streamlit as st
 import os
 import google.generativeai as genai
 
-os.environ["GOOGLE_API_KEY"] = "YOUR_API_KEY"  # Replace with your Gemini API key
+os.environ["GOOGLE_API_KEY"] = "AIzaSyBpxppXt_LOWCOdykw4QDRmXtyxN76ING0"
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
@@ -46,17 +45,15 @@ class LoanSupportChatbot:
                     }
                 }
             },
-            # Add other loan types here...
         }
 
 
-def get_gemini_response(question, chat):
+def get_response(question, chat):
     response = chat.send_message(question, stream=True)
     return response, chat
 
 
 def main():
-    """Streamlit Application"""
 
     st.set_page_config(page_title="Q&A and Loan Support Demo")
 
@@ -64,7 +61,6 @@ def main():
 
     chatbot = LoanSupportChatbot()
 
-    # Initialize session state for chat history and chat object if they don't exist
     if 'chat_history' not in st.session_state:
         st.session_state['chat_history'] = []
     if 'chat' not in st.session_state:
@@ -76,22 +72,19 @@ def main():
     submit_button = st.button("Ask the question")
 
     if submit_button and user_input:
-        # Get the chat object from session state
+
         chat = st.session_state['chat']
 
-        # Get the response and updated chat object
-        gemini_response, chat = get_gemini_response(user_input, chat)
+        response, chat = get_response(user_input, chat)
 
-        # Update the chat object in session state
         st.session_state['chat'] = chat
 
-        # Process Gemini response
         st.subheader("The Response is")
-        for chunk in gemini_response:
+        for chunk in response:
             st.write(chunk.text)
+            st.session_state['chat_history'].append(("You", user_input))
             st.session_state['chat_history'].append(("Bot (Gemini)", chunk.text))
 
-        # Check if user query asks about loans
         if any(loan_type in user_input.lower() for loan_type in chatbot.loans.keys()):
             for loan_type, loan_info in chatbot.loans.items():
                 if loan_type in user_input.lower():
@@ -115,9 +108,15 @@ def main():
                                 st.write(f"Security/Collateral: {scheme_info['security_collateral']}")
                             if "conditions_apply" in scheme_info:
                                 st.write(f"Conditions Apply: {scheme_info['conditions_apply']}")
+
+                    st.session_state['chat_history'].append(("Bot (Loan Support)", loan_info["description"]))
                     break
         else:
             st.write("Please specify a loan type to get information.")
+
+        st.subheader("The Chat History is")
+        for role, text in st.session_state['chat_history']:
+            st.write(f"{role}: {text}")
 
 
 if __name__ == "__main__":
